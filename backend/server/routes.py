@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+import signal as signal_module
 
 import psutil
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from backend.collectors.system_collector import SystemCollector
 from backend.collectors.process_collector import ProcessCollector
@@ -13,6 +15,21 @@ from backend.collectors.thread_collector import ThreadCollector
 from backend.services.tree_service import TreeService
 
 router = APIRouter(prefix="/api")
+
+# Shared singleton so thread CPU% delta tracking works across requests.
+_thread_collector = ThreadCollector()
+
+# Allowed signals and their mapping to signal numbers.
+ALLOWED_SIGNALS: dict[str, int] = {
+    "SIGTERM": signal_module.SIGTERM,
+    "SIGKILL": signal_module.SIGKILL,
+    "SIGSTOP": signal_module.SIGSTOP,
+    "SIGCONT": signal_module.SIGCONT,
+}
+
+
+class SignalRequest(BaseModel):
+    signal: str
 
 
 # ------------------------------------------------------------------ #
@@ -126,9 +143,42 @@ async def get_process(pid: int) -> dict:
 
 @router.get("/processes/{pid}/threads")
 async def get_threads(pid: int) -> list[dict]:
-    collector = ThreadCollector()
-    threads = collector.collect_threads(pid)
+    threads = _thread_collector.collect_threads(pid)
     return [t.model_dump() for t in threads]
+
+
+# ------------------------------------------------------------------ #
+# Send signal to a process
+# ------------------------------------------------------------------ #
+
+
+@router.post("/processes/{pid}/signal")
+async def send_signal(pid: int, body: SignalRequest) -> dict:
+    signal_name = body.signal.upper()
+
+    if signal_name not in ALLOWED_SIGNALS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid signal '{body.signal}'. Allowed signals: {', '.join(ALLOWED_SIGNALS)}",
+        )
+
+    # Verify the process exists before sending a signal.
+    if not psutil.pid_exists(pid):
+        raise HTTPException(status_code=404, detail=f"Process {pid} not found")
+
+    try:
+        os.kill(pid, ALLOWED_SIGNALS[signal_name])
+    except ProcessLookupError:
+        raise HTTPException(status_code=404, detail=f"Process {pid} not found")
+    except PermissionError:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Permission denied: cannot send {signal_name} to process {pid}",
+        )
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {"status": "ok", "pid": pid, "signal": signal_name}
 
 
 # ------------------------------------------------------------------ #
@@ -147,10 +197,9 @@ async def process_tree() -> list[dict]:
 @router.get("/tree/{pid}")
 async def process_subtree(pid: int) -> dict:
     proc_collector = ProcessCollector()
-    thread_collector = ThreadCollector()
 
     processes = proc_collector.collect_all()
-    threads = thread_collector.collect_threads(pid)
+    threads = _thread_collector.collect_threads(pid)
     threads_by_pid: dict[int, list] = {}
     if threads:
         threads_by_pid[pid] = threads
