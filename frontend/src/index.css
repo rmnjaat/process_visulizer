@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-:root {
+/* Default: dark theme */
+:root,
+[data-theme="dark"] {
   --bg-primary: #0F172A;
   --bg-surface: #1E293B;
   --bg-elevated: #334155;
@@ -14,6 +16,22 @@
   --text-primary: #F8FAFC;
   --text-secondary: #94A3B8;
   --text-muted: #64748B;
+}
+
+[data-theme="light"] {
+  --bg-primary: #F1F5F9;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #E2E8F0;
+  --color-primary: #2563EB;
+  --color-success: #16A34A;
+  --color-warning: #D97706;
+  --color-danger: #DC2626;
+  --color-info: #7C3AED;
+  --color-process: #2563EB;
+  --color-thread: #7C3AED;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
 }
 
 body {
@@ -48,6 +66,97 @@ body {
 }
 .cpu-spike {
   animation: cpu-spike-pulse 2s ease-in-out infinite;
+}
+
+/* ── Anomaly highlighting ─────────────────────────────── */
+
+/* Zombie process row — faint red tint */
+.anomaly-zombie {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  border-left: 3px solid var(--color-danger);
+}
+
+/* Stopped process row — dimmed appearance */
+.anomaly-stopped {
+  opacity: 0.6;
+  border-left: 3px solid #6B7280;
+}
+
+/* High-FD indicator — left border accent on the row */
+.anomaly-high-fd {
+  border-right: 3px solid var(--color-warning);
+}
+
+/* Anomaly badge (shared styling) */
+.anomaly-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.anomaly-badge--zombie {
+  background-color: rgba(239, 68, 68, 0.18);
+  color: #FCA5A5;
+}
+.anomaly-badge--stopped {
+  background-color: rgba(107, 114, 128, 0.2);
+  color: #9CA3AF;
+}
+.anomaly-badge--high-fd {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #FCD34D;
+}
+
+/* Cell-level glow highlights */
+.anomaly-cell-high-cpu {
+  background-color: rgba(245, 158, 11, 0.12);
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+.anomaly-cell-high-mem {
+  background-color: rgba(245, 158, 11, 0.12);
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+.anomaly-cell-very-high-mem {
+  background-color: rgba(239, 68, 68, 0.14);
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+.anomaly-cell-zero-threads {
+  color: var(--color-danger) !important;
+  font-weight: 600;
+}
+
+/* Light-theme overrides for anomaly badges */
+[data-theme="light"] .anomaly-badge--zombie {
+  background-color: rgba(220, 38, 38, 0.12);
+  color: #991B1B;
+}
+[data-theme="light"] .anomaly-badge--stopped {
+  background-color: rgba(107, 114, 128, 0.15);
+  color: #4B5563;
+}
+[data-theme="light"] .anomaly-badge--high-fd {
+  background-color: rgba(217, 119, 6, 0.12);
+  color: #92400E;
+}
+[data-theme="light"] .anomaly-cell-high-cpu {
+  background-color: rgba(217, 119, 6, 0.1);
+}
+[data-theme="light"] .anomaly-cell-high-mem {
+  background-color: rgba(217, 119, 6, 0.1);
+}
+[data-theme="light"] .anomaly-cell-very-high-mem {
+  background-color: rgba(220, 38, 38, 0.1);
 }
 
 /* Responsive: hide User column on small screens */
