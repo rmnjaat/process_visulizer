@@ -1,0 +1,40 @@
+export interface ProcessInfo {
+  entity_type: 'process';
+  pid: number;
+  ppid: number;
+  name: string;
+  exe: string;
+  cmdline: string;
+  status: string;
+  username: string;
+  create_time: number;
+  cpu_percent: number;
+  cpu_time_user: number;
+  cpu_time_system: number;
+  cpu_time_children_user: number;
+  cpu_time_children_system: number;
+  cpu_time_iowait: number;
+  memory_rss_bytes: number;
+  memory_vms_bytes: number;
+  memory_shared_bytes: number;
+  memory_text_bytes: number;
+  memory_data_bytes: number;
+  memory_lib_bytes: number;
+  memory_dirty_bytes: number;
+  memory_percent: number;
+  memory_uss_bytes: number;
+  memory_pss_bytes: number;
+  num_threads: number;
+  nice: number;
+  io_read_count: number;
+  io_write_count: number;
+  io_read_bytes: number;
+  io_write_bytes: number;
+  ctx_switches_voluntary: number;
+  ctx_switches_involuntary: number;
+  num_fds: number;
+  num_connections: number;
+  num_open_files: number;
+}
+
+export type ProcessState = 'running' | 'sleeping' | 'disk-sleep' | 'zombie' | 'stopped' | 'idle' | 'unknown';
