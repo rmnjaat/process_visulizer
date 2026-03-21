@@ -7,6 +7,7 @@ import { Drawer } from '../components/layout/Drawer';
 import { ProcessBadge } from '../components/badges/ProcessBadge';
 import { ThreadBadge } from '../components/badges/ThreadBadge';
 import { formatBytes, formatPercent, formatDuration } from '../utils/format';
+import { StateBadge } from '../components/common/StateBadge';
 
 export default function ProcessTree() {
   const [tree, setTree] = useState<TreeNode[]>([]);
@@ -169,14 +170,50 @@ export default function ProcessTree() {
 
       {/* Drawer */}
       <Drawer isOpen={drawerOpen} onClose={handleCloseDrawer} title={drawerTitle} badge={drawerBadge}>
-        {selectedProcess && <ProcessDrawerContent process={selectedProcess} />}
+        {selectedProcess && <ProcessDrawerContent process={selectedProcess} onSelectThread={handleSelectThread} />}
         {selectedThread && <ThreadDrawerContent thread={selectedThread} />}
       </Drawer>
     </div>
   );
 }
 
-function ProcessDrawerContent({ process: proc }: { process: ProcessInfo }) {
+function ProcessDrawerContent({
+  process: proc,
+  onSelectThread,
+}: {
+  process: ProcessInfo;
+  onSelectThread: (thread: ThreadInfo) => void;
+}) {
+  const [threads, setThreads] = useState<ThreadInfo[]>([]);
+  const [threadsLoading, setThreadsLoading] = useState(false);
+  const [threadsFetchFailed, setThreadsFetchFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setThreadsLoading(true);
+    setThreads([]);
+    setThreadsFetchFailed(false);
+
+    fetch(`/api/processes/${proc.pid}/threads`)
+      .then((res) => {
+        if (!res.ok) throw new Error('fetch failed');
+        return res.json();
+      })
+      .then((data: ThreadInfo[]) => {
+        if (!cancelled) setThreads(data);
+      })
+      .catch(() => {
+        if (!cancelled) setThreadsFetchFailed(true);
+      })
+      .finally(() => {
+        if (!cancelled) setThreadsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [proc.pid]);
+
   const fields: { label: string; value: string }[] = [
     { label: 'PID', value: String(proc.pid) },
     { label: 'Name', value: proc.name },
@@ -221,6 +258,73 @@ function ProcessDrawerContent({ process: proc }: { process: ProcessInfo }) {
           </div>
         </div>
       )}
+
+      {/* Threads Section */}
+      <div
+        className="mt-2 pt-3"
+        style={{ borderTop: '1px solid var(--bg-elevated)' }}
+      >
+        <h4
+          className="text-xs font-semibold uppercase tracking-wider mb-2"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          Threads ({threads.length > 0 ? threads.length : proc.num_threads})
+        </h4>
+
+        {threadsLoading && (
+          <div className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>
+            Loading threads...
+          </div>
+        )}
+
+        {!threadsLoading && threads.length === 0 && (
+          <div className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>
+            {threadsFetchFailed || proc.num_threads > 0
+              ? 'Thread details not accessible (permission denied for this process)'
+              : 'No threads'}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1">
+          {threads.map((t) => (
+            <div
+              key={t.tid}
+              className="flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors"
+              style={{ backgroundColor: 'var(--bg-elevated)' }}
+              onClick={() => onSelectThread(t)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+              }}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="text-xs font-mono shrink-0"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  {t.tid}
+                </span>
+                <span
+                  className="text-xs truncate"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {t.name}
+                </span>
+                {t.state !== 'unknown' && (
+                  <StateBadge state={t.state} />
+                )}
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-xs font-mono" style={{ color: 'var(--accent-blue)' }}>
+                  {formatDuration(t.cpu_time_user + t.cpu_time_system)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
