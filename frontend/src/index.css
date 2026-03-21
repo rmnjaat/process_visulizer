@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0F172A;
+  --bg-surface: #1E293B;
+  --bg-elevated: #334155;
+  --color-primary: #3B82F6;
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #8B5CF6;
+  --color-process: #3B82F6;
+  --color-thread: #8B5CF6;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-elevated);
+  border-radius: 4px;
+}
+
+/* CPU spike pulse for process rows */
+@keyframes cpu-spike-pulse {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(239, 68, 68, 0.1); }
+}
+.cpu-spike {
+  animation: cpu-spike-pulse 2s ease-in-out infinite;
+}
+
+/* Responsive: hide User column on small screens */
+@media (max-width: 768px) {
+  .process-grid {
+    grid-template-columns: 60px 50px 1fr 70px 80px 60px 80px !important;
+  }
+  .process-grid > :last-child {
+    display: none;
+  }
+}
