@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useSystemStore } from '../stores/systemStore';
 import { useProcessStore } from '../stores/processStore';
+import { useToastStore } from '../stores/toastStore';
 
 // Module-level WebSocket so only one connection exists across the app.
 let _ws: WebSocket | null = null;
+let _hasReceivedSnapshot = false;
 let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let _reconnectDelay = 1000;
 let _intentionallyClosed = false;
@@ -24,9 +26,30 @@ function handleMessage(event: MessageEvent) {
     if (msg.type === 'snapshot') {
       if (msg.system) setSystem(msg.system);
       if (msg.processes) applySnapshot(msg.processes);
+      _hasReceivedSnapshot = true;
     } else if (msg.type === 'diff') {
       if (msg.system) setSystem(msg.system);
-      if (msg.diff) applyDiff(msg.diff);
+      if (msg.diff) {
+        // Show toasts only for diffs after the initial snapshot
+        if (_hasReceivedSnapshot) {
+          const { addToast } = useToastStore.getState();
+          const diff = msg.diff;
+          if (diff.new) {
+            for (const p of diff.new) {
+              addToast(`Process started: ${p.name} (PID ${p.pid})`, 'success');
+            }
+          }
+          if (diff.exited) {
+            const processes = useProcessStore.getState().processes;
+            for (const e of diff.exited) {
+              const proc = processes[e.pid];
+              const name = proc ? proc.name : 'unknown';
+              addToast(`Process exited: ${name} (PID ${e.pid})`, 'warning');
+            }
+          }
+        }
+        applyDiff(msg.diff);
+      }
     }
 
     // Handle threads for both message types
@@ -73,7 +96,7 @@ function connectWs() {
   ws.onmessage = handleMessage;
 }
 
-function disconnectWs() {
+export function disconnectWs() {
   _intentionallyClosed = true;
   if (_reconnectTimer) {
     clearTimeout(_reconnectTimer);
