@@ -38,12 +38,22 @@ if [ ! -d "$SCRIPT_DIR/frontend/node_modules" ]; then
 fi
 
 echo ""
+echo "┌─────────────────────────────────────────────────┐"
+echo "│  The backend needs sudo to access all processes  │"
+echo "│  (memory details, signals, file descriptors)     │"
+echo "└─────────────────────────────────────────────────┘"
+echo ""
+
+# Ask for sudo upfront so the password prompt is visible
+sudo -v || { echo "Error: sudo access is required to run the backend."; exit 1; }
+
+echo ""
 echo "Starting backend on http://127.0.0.1:8765..."
-cd "$SCRIPT_DIR" && python -m backend.main &
+cd "$SCRIPT_DIR" && sudo bash -c "exec -a 'PV-Backend' '$SCRIPT_DIR/backend/venv/bin/python' -m backend.main" &
 BACKEND_PID=$!
 
 echo "Starting frontend on http://localhost:5173..."
-cd "$SCRIPT_DIR/frontend" && npm run dev &
+cd "$SCRIPT_DIR/frontend" && exec -a 'PV-Frontend' npx vite &
 FRONTEND_PID=$!
 
 # Wait for servers to start
